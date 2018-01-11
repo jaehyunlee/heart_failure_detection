@@ -6,9 +6,10 @@ FLAGS = tf.app.flags.FLAGS
 FLAGS.image_size = 28
 FLAGS.image_color = 1
 FLAGS.batch_size = 100
-FLAGS.learning_rate = 0.001
+FLAGS.learning_rate = 0.0003
 FLAGS.num_classes = 4
-FLAGS.training_epochs = 20
+FLAGS.training_epochs = 200
+FLAGS.num_models = 3
 FLAGS.log_dir = './rr_log/'
 FLAGS.ckpt_dir = './rr_ckpt/'
 
@@ -81,14 +82,16 @@ class CNNModel:
 def main():
     # get training data
     tf.set_random_seed(777)  # reproducibility
-    raw_data, label_data = rrdata.get_data()
+    rrdata.make_data()
+    raw_data, label_data, test_raw_data, test_label_data = rrdata.get_data()
     len_data = len(raw_data)
+    test_len_data = len(test_raw_data)
 
     # build model
     sess = tf.Session()
     models = []
-    num_models = 3
-    for m in range(num_models):
+
+    for m in range(FLAGS.num_models):
         models.append(CNNModel(sess, "model" + str(m)))
 
     # initialize
@@ -99,7 +102,7 @@ def main():
     # train my model
     print('Learning started.')
     print('Training ', len_data, ' files')
-    print('Testing ', len_data, ' files')
+    print('Testing ', test_len_data, ' files')
 
     for epoch in range(FLAGS.training_epochs):
         avg_cost_list = np.zeros(len(models))
@@ -113,9 +116,9 @@ def main():
         # accuracy & log writer
         feed_dict = {}
         for m_idx, m in enumerate(models):
-            print('Model ', m_idx, ' Accuracy:', m.get_accuracy(raw_data, label_data, 1))
-            feed_dict[m.x] = raw_data
-            feed_dict[m.y] = label_data
+            print('Model ', m_idx, ' Accuracy:', m.get_accuracy(test_raw_data, test_label_data, 1))
+            feed_dict[m.x] = test_raw_data
+            feed_dict[m.y] = test_label_data
             feed_dict[m.keep_prob] = 1
 
         summary_str = sess.run(summary, feed_dict=feed_dict)

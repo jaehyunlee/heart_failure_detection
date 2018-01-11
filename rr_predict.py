@@ -6,6 +6,7 @@ FLAGS = tf.app.flags.FLAGS
 FLAGS.image_size = 28
 FLAGS.image_color = 1
 FLAGS.num_classes = 4
+FLAGS.num_models = 5
 FLAGS.ckpt_dir = './rr_ckpt/'
 
 
@@ -69,14 +70,14 @@ class CNNModel:
 def main():
     # download training data
     tf.set_random_seed(777)  # reproducibility
-    raw_data, label_data = rrdata.get_data()
+    raw_data, label_data, test_raw_data, test_label_data = rrdata.get_data()
     len_data = len(raw_data)
+    test_len_data = len(test_raw_data)
 
     with tf.Session() as sess:
         models = []
-        num_models = 3
 
-        for m in range(num_models):
+        for m in range(FLAGS.num_models):
             models.append(CNNModel(sess, "model" + str(m)))
 
         # restore model
@@ -86,19 +87,28 @@ def main():
 
         # Test model and check accuracy
         print('Training ', len_data, ' files')
-        print('Testing ', len_data, ' files')
-        test_size = len(label_data)
+        print('Testing ', test_len_data, ' files')
+        test_size = len(test_label_data)
         predictions = np.zeros([test_size, 4])
 
         for m_idx, m in enumerate(models):
             print('Model', m_idx, 'Accuracy:', m.get_accuracy(
-                raw_data, label_data, 1))
-            p = m.predict(raw_data)
+                test_raw_data, test_label_data, 1))
+            p = m.predict(test_raw_data)
             predictions += p
 
-        ensemble_correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(label_data, 1))
+        ensemble_correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(test_label_data, 1))
         ensemble_accuracy = tf.reduce_mean(tf.cast(ensemble_correct_prediction, tf.float32))
         print('Ensemble accuracy:', sess.run(ensemble_accuracy))
+
+        # Print accuracy table
+        test_prediction_list = sess.run(tf.argmax(predictions, 1))
+        test_label_list = sess.run(tf.argmax(test_label_data, 1))
+        accuracy_arr = np.zeros((4, 4))
+        for index1 in range(test_size):
+            accuracy_arr[test_prediction_list[index1]][test_label_list[index1]] += 1
+        print(accuracy_arr)
+        print(' ------ label ----->')
 
 
 main()
